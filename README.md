@@ -23,7 +23,7 @@ mod:v4-pro  bal:¥17.38  syn@14:32  ef:MAX
 ```bash
 mkdir -p ~/.claude/skills/deepseek-status
 curl -o ~/.claude/skills/deepseek-status/deepseek-status.sh \
-  https://raw.githubusercontent.com/<YOUR_USER>/claude-code-deepseek-status/main/deepseek-status.sh
+  https://raw.githubusercontent.com/goodthins/claude-code-deepseek-status/main/deepseek-status.sh
 chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
 ```
 
@@ -142,7 +142,7 @@ mod:v4-pro  bal:¥17.38  syn@14:32  ef:MAX
 ```bash
 mkdir -p ~/.claude/skills/deepseek-status
 curl -o ~/.claude/skills/deepseek-status/deepseek-status.sh \
-  https://raw.githubusercontent.com/<你的用户名>/claude-code-deepseek-status/main/deepseek-status.sh
+  https://raw.githubusercontent.com/goodthins/claude-code-deepseek-status/main/deepseek-status.sh
 chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
 ```
 
