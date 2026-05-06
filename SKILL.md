@@ -24,7 +24,7 @@ Add to `~/.claude/settings.json`:
 {
   "env": {
     "DEEPSEEK_API_KEY": "sk-your-key-here",
-    "CLAUDE_EFFORT": "max"
+    "CLAUDE_CODE_EFFORT_LEVEL": "high"
   },
   "statusLine": {
     "type": "command",
@@ -33,14 +33,14 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
-Replace the `CLAUDE_EFFORT` value with your actual effort level (max, high, medium, low).
+Replace the effort level with your preference (`high`, `medium`, `low`). Note: `max` / `xhigh` are Opus-exclusive and are silently downgraded to `high` on DeepSeek.
 
 ## Usage
 
 Once installed, the status line will display automatically. You can also run it manually:
 
 ```bash
-DEEPSEEK_API_KEY=sk-xxx ANTHROPIC_MODEL=deepseek-v4-pro bash ~/.claude/skills/deepseek-status/deepseek-status.sh
+DEEPSEEK_API_KEY=sk-xxx ANTHROPIC_MODEL=deepseek-v4-pro CLAUDE_CODE_EFFORT_LEVEL=high bash ~/.claude/skills/deepseek-status/deepseek-status.sh
 ```
 
 ## Display
@@ -62,5 +62,6 @@ label value  label value  label value  label value
 |----------|---------|---------|
 | `DEEPSEEK_API_KEY` | DeepSeek API key (required) | — |
 | `DEEPSEEK_MODEL` | Model name override | `$ANTHROPIC_MODEL` |
-| `CLAUDE_EFFORT` | Effort level display | — |
+| `CLAUDE_CODE_EFFORT_LEVEL` | Effort level (Claude Code official) | — |
+| `CLAUDE_EFFORT` | Legacy fallback | — |
 | `NO_COLOR` | Set to 1 to disable colors | — |

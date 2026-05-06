@@ -7,7 +7,8 @@
 # ENVIRONMENT VARIABLES (all optional for default install):
 #   DEEPSEEK_API_KEY  – DeepSeek API key                        [required]
 #   DEEPSEEK_MODEL    – model name override                     [falls back to ANTHROPIC_MODEL]
-#   CLAUDE_EFFORT     – effort level: max / high / medium / low [auto-detect]
+#   CLAUDE_CODE_EFFORT_LEVEL – effort level: xhigh / high / medium / low  [Claude Code official]
+#   CLAUDE_EFFORT             – fallback effort var (legacy; use CLAUDE_CODE_EFFORT_LEVEL)
 #   NO_COLOR          – set to 1 to disable ANSI colors         [off]
 #
 # USAGE:
@@ -16,7 +17,7 @@
 # INSTALL (in Claude Code settings.json):
 #   "env": {
 #     "DEEPSEEK_API_KEY": "sk-your-key-here",
-#     "CLAUDE_EFFORT": "max"
+#     "CLAUDE_CODE_EFFORT_LEVEL": "high"
 #   },
 #   "statusLine": {
 #     "type": "command",
@@ -29,7 +30,7 @@ set -o pipefail
 # ---- args -------------------------------------------------------------------
 API_KEY="${DEEPSEEK_API_KEY:-}"
 MODEL="${DEEPSEEK_MODEL:-${ANTHROPIC_MODEL:-}}"
-EFFORT="${CLAUDE_EFFORT:-}"
+EFFORT="${CLAUDE_CODE_EFFORT_LEVEL:-${CLAUDE_EFFORT:-}}"
 NO_COLOR="${NO_COLOR:-}"
 
 while [[ $# -gt 0 ]]; do

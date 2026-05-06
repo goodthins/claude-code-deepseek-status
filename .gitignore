@@ -12,3 +12,4 @@ desktop.ini
 
 # Shell files
 *.bak
+.claude/settings.local.json
