@@ -88,7 +88,7 @@ Set `MIMO_TOKEN_PLAN_TOTAL_CREDITS` to your plan's credit quota:
 | Pro | 700M | `700000000` |
 | Max | 1.6B | `1600000000` |
 
-The script auto-tracks token consumption from Claude Code's local audit logs and converts tokens to credits using the model-specific multiplier.
+MiMo has no public balance API. The script auto-tracks token consumption from Claude Code's local audit logs (`~/.claude/projects/*/*.jsonl`) and converts tokens to credits using the model-specific multiplier. A file-mtime cache avoids re-scanning on every refresh. Tracking is per-machine; usage from other computers is not reflected.
 
 ### Credit Multiplier
 
@@ -142,5 +142,5 @@ Arguments override environment variables.
 1. Claude Code invokes the script periodically via the `statusLine` command
 2. Script detects provider from model name prefix
 3. **DeepSeek**: Calls `GET https://api.deepseek.com/user/balance` (2s/3s timeout) and parses `total_balance`
-4. **MiMo**: Parses all `~/.claude/projects/*/*.jsonl` audit logs, sums `input_tokens + output_tokens` for MiMo model calls, multiplies by credit rate, renders progress bar vs. total quota
+4. **MiMo**: Parses `~/.claude/projects/*/*.jsonl` audit logs (no public API exists), sums `input_tokens + output_tokens` for MiMo model calls, multiplies by credit rate, renders progress bar vs. total quota. Uses file-mtime cache for performance.
 5. Outputs a single colorized line to stdout

@@ -142,12 +142,26 @@ Add to `~/.claude/settings.json` (merge into existing config):
 
 ### 2. How Credits Tracking Works
 
-Since MiMo has no public balance API, the script parses Claude Code's local audit logs (`~/.claude/projects/*/*.jsonl`) to auto-track token consumption. Each refresh it sums all `input_tokens + output_tokens` from MiMo model calls, converts to credits using the model-specific multiplier, and renders the progress bar.
+> **Why audit logs?** MiMo Token Plan has **no public balance or credits API** — there is no endpoint to query remaining quota. This is a documented limitation of the MiMo platform, not a bug.
+
+Instead of an API call, the script reads Claude Code's own local audit trail. Claude Core natively records every API request in JSONL files at `~/.claude/projects/*/*.jsonl`, including the model name and `input_tokens`/`output_tokens` for each call. The script:
+
+1. Finds all audit lines where `"model"` starts with `mimo-`
+2. Sums all `input_tokens` + `output_tokens` from those lines
+3. Multiplies by the model-specific credit rate (see table below)
+4. Renders the progress bar: `used_credits / total_plan_credits`
+
+To avoid re-scanning all files on every refresh (~30s interval), a file-mtime cache at `~/.cache/deepseek-status/mimo-tokens.cache` skips the scan when no new audit data exists.
 
 **Credit multipliers by model:**
 - MiMo-V2-Omni: 1 Token = 1 Credit
 - MiMo-V2.5-Pro / V2-Pro: 1 Token = 2 Credits
 - Others: 2x (default, override with `MIMO_CREDIT_MULTIPLIER`)
+
+**Limitations (inherent to the audit-log approach):**
+- **Per-machine only** — usage from other computers is not visible
+- **Starts from first Claude Code usage** — no historical data before that
+- **Token = input + output** — cache write/read tokens are included in Claude Code's count but MiMo may bill them differently; the progress bar is an approximation
 
 ### 3. Restart Claude Code
 
@@ -250,7 +264,7 @@ A: Set `DEEPSEEK_MODEL=deepseek-chat` (or your model name) in the `env` block.
 A: Network timeout or API auth issue. The next refresh retries automatically.
 
 **Q: How does MiMo credits tracking work without a balance API?**
-A: MiMo has no public balance/credits endpoint. The script parses Claude Code's local audit logs (`~/.claude/projects/*/*.jsonl`) and sums all `input_tokens + output_tokens` from MiMo model calls, then converts to credits using the model's multiplier. This is automatic — no manual input needed.
+A: MiMo has no public balance/credits endpoint — this is a platform limitation. The plugin works around it by parsing Claude Code's own local audit logs (`~/.claude/projects/*/*.jsonl`), where every API call is recorded with model name + token usage. It sums all MiMo model tokens, multiplies by the credit rate, and compares against your plan quota. A file-mtime cache avoids re-scanning every file on each refresh. This means tracking is per-machine and starts from your first Claude Code session — usage on other computers won't be reflected.
 
 **Q: How do I switch between DeepSeek and MiMo?**
 A: Just change `ANTHROPIC_MODEL` in your settings.json. The script auto-detects the provider from the model name prefix (`deepseek-` vs `mimo-`).
@@ -413,12 +427,26 @@ chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
 
 ### 2. Credits 追踪原理
 
-MiMo 没有公开的余额/额度查询 API。脚本通过解析 Claude Code 本地的审计日志（`~/.claude/projects/*/*.jsonl`）自动累计所有 MiMo 模型调用的 `input_tokens + output_tokens`，再乘以模型对应的 Credit 倍率，得到已消耗 Credits，与总配额对比渲染进度条。
+> **为什么用审计日志？** MiMo Token Plan **没有公开的余额/额度查询 API** — 不存在任何可以查询剩余额度的接口。这是 MiMo 平台的已知限制，并非插件缺陷。
+
+脚本通过读取 Claude Code 本地的审计日志来实现追踪。Claude Code 会自动将每次 API 请求记录到 `~/.claude/projects/*/*.jsonl` 中，包括模型名称和每次调用的 `input_tokens`/`output_tokens`。脚本：
+
+1. 找出所有 `"model"` 以 `mimo-` 开头的审计行
+2. 累加这些行的 `input_tokens` + `output_tokens`
+3. 乘以模型对应的 Credit 倍率（见下表）
+4. 渲染进度条：已用 Credits / 套餐总配额
+
+为避免每次刷新（约 30s 间隔）都全量扫描，脚本使用 `~/.cache/deepseek-status/mimo-tokens.cache` 做文件时间戳缓存——当没有新的审计数据时直接返回缓存值。
 
 **各模型 Credit 倍率：**
 - MiMo-V2-Omni: 1 Token = 1 Credit
 - MiMo-V2.5-Pro / V2-Pro: 1 Token = 2 Credits
 - 其他: 默认 2x（可通过 `MIMO_CREDIT_MULTIPLIER` 覆盖）
+
+**局限（审计日志方案固有）：**
+- **仅限本机** — 其他电脑上的用量不可见
+- **从首次使用 Claude Code 开始** — 之前的历史数据无法统计
+- **Token = input + output** — cache write/read token 也被计入，但 MiMo 可能按不同方式计费；进度条为近似值
 
 ### 3. 重启 Claude Code
 
@@ -527,7 +555,7 @@ A: 在 `env` 块中设置 `DEEPSEEK_MODEL=deepseek-chat`（或你使用的模型
 A: 网络超时或 API 密钥问题。下次刷新会自动重试。
 
 **Q: MiMo 的 Credits 是怎么追踪的？没有 API 查余额吗？**
-A: MiMo 没有公开的余额/额度查询 API。脚本通过解析 Claude Code 本地的审计日志（`~/.claude/projects/*/*.jsonl`），自动累计所有 MiMo 模型调用的 `input_tokens + output_tokens`，再乘以模型对应的 Credit 倍率转为已消耗 Credits。全程自动，无需手动输入。
+A: MiMo 没有公开的余额/额度查询 API — 这是 MiMo 平台本身的限制，不是插件的问题。插件通过解析 Claude Code 本地的审计日志（`~/.claude/projects/*/*.jsonl`）来间接实现：Claude Code 会自动把每次 API 调用的模型名和 token 用量记录到 JSONL 文件中。脚本累加所有 MiMo 模型的 input/output tokens，乘以 Credit 倍率，再与你配置的套餐总配额对比。使用文件时间戳缓存避免每次刷新都全量扫描。注意：追踪范围仅限本机，从你首次使用 Claude Code 开始 — 其他电脑上的用量不会计入。
 
 **Q: 如何在 DeepSeek 和 MiMo 之间切换？**
 A: 只需在 settings.json 中修改 `ANTHROPIC_MODEL`。脚本会根据模型名前缀（`deepseek-` vs `mimo-`）自动识别厂商。

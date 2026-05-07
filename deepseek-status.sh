@@ -5,6 +5,11 @@
 # DeepSeek mode:  mod:v4-pro  bal:¥17.38  syn@14:32  ef:MAX
 # MiMo TokenPlan: mod:v2.5-pro  [██████░░░░]  syn@14:32  ef:HIGH
 #
+# MiMo has NO public balance API. Credits are tracked by parsing Claude Code's
+# own audit logs (~/.claude/projects/*/*.jsonl), which record every API call's
+# model + token usage automatically. Tokens × model multiplier = credits used.
+# This means tracking is per-machine and starts from first Claude Code usage.
+#
 # ENVIRONMENT VARIABLES:
 #   DEEPSEEK_API_KEY               – DeepSeek API key                    [DeepSeek]
 #   MIMO_TOKEN_PLAN_TOTAL_CREDITS  – Token Plan total credits            [MiMo]
@@ -89,6 +94,11 @@ detect_credit_multiplier() {
 }
 
 # ---- compute MiMo credits from audit logs -----------------------------------
+# MiMo has no public balance/credits API. Instead, we parse Claude Code's local
+# audit logs (~/.claude/projects/*/*.jsonl) — every API call is recorded there
+# with model name + token usage. We sum all MiMo model tokens and convert to
+# credits via the model-specific multiplier. A file-mtime cache avoids
+# re-scanning all JSONL files on every status-line refresh (~30s interval).
 compute_mimo_credits() {
   local audit_base="$HOME/.claude/projects"
 
@@ -97,12 +107,28 @@ compute_mimo_credits() {
     return
   fi
 
+  local cache_dir="$HOME/.cache/deepseek-status"
+  local cache_file="$cache_dir/mimo-tokens.cache"
+
+  # Use cache if no JSONL file is newer than the cache snapshot
+  if [[ -f "$cache_file" ]]; then
+    local newer_files
+    newer_files=$(find "$audit_base" -name "*.jsonl" -newer "$cache_file" 2>/dev/null)
+    if [[ $? -eq 0 ]] && [[ -z "$newer_files" ]]; then
+      head -1 "$cache_file"
+      return
+    fi
+  fi
+
   local total_tokens
   total_tokens=$(grep -rh '"model":"mimo-' "$audit_base" 2>/dev/null | \
     grep -oE '"input_tokens":[0-9]+|"output_tokens":[0-9]+' | \
     awk -F: '{s+=$2} END {printf "%.0f", s}')
 
-  printf '%s' "${total_tokens:-0}"
+  local result="${total_tokens:-0}"
+  mkdir -p "$cache_dir"
+  printf '%s\n' "$result" > "$cache_file"
+  printf '%s' "$result"
 }
 
 # ---- rainbow progress bar ---------------------------------------------------
