@@ -44,7 +44,7 @@ Real-time API status line plugin for [Claude Code](https://claude.ai/code). Auto
 - **Auto-detection** — Switches between DeepSeek / MiMo based on model name prefix
 - **mod** — Current model, auto-detected from environment (`deepseek-v4-pro[1m]` → `v4-pro`, `mimo-v2.5-pro` → `v2.5-pro`)
 - **bal** (DeepSeek) — Real-time account balance (CNY) via `/user/balance` API
-- **credits bar** (MiMo) — Rainbow Unicode progress bar showing credits consumed vs. Token Plan quota, auto-tracked from local audit logs
+- **credits bar** (MiMo) — Rainbow Unicode progress bar showing **remaining** credits (fuel gauge: full → empty), auto-tracked from local audit logs; supports `/mimocorrection` calibration
 - **syn@** — Last refresh timestamp (HH:MM)
 - **ef** — Claude Code effort level (XHIGH / HIGH / MED / LOW)
 - **Color-coded** — Balance turns yellow when < &yen;5; progress bar uses 12-color rainbow gradient
@@ -149,7 +149,7 @@ Instead of an API call, the script reads Claude Code's own local audit trail. Cl
 1. Finds all audit lines where `"model"` starts with `mimo-`
 2. Sums all `input_tokens` + `output_tokens` from those lines
 3. Multiplies by the model-specific credit rate (see table below)
-4. Renders the progress bar: `used_credits / total_plan_credits`
+4. Renders the progress bar: `remaining_credits / total_plan_credits` (fuel gauge style)
 
 To avoid re-scanning all files on every refresh (~30s interval), a file-mtime cache at `~/.cache/deepseek-status/mimo-tokens.cache` skips the scan when no new audit data exists.
 
@@ -157,6 +157,23 @@ To avoid re-scanning all files on every refresh (~30s interval), a file-mtime ca
 - MiMo-V2-Omni: 1 Token = 1 Credit
 - MiMo-V2.5-Pro / V2-Pro: 1 Token = 2 Credits
 - Others: 2x (default, override with `MIMO_CREDIT_MULTIPLIER`)
+
+**Off-peak discount:** MiMo offers 0.8x credits during 00:00-08:00 Beijing time.
+
+### 3. Calibrate with `/mimocorrection`
+
+The audit-log approach only tracks per-machine usage. To match the MiMo website's real balance, use the `/mimocorrection` command:
+
+```
+/mimocorrection 20,720,328 / 700,000,000
+```
+
+Paste the "used / total" numbers from the MiMo Token Plan website. The command writes a calibration file that anchors the display to real usage. After calibration, the script computes: `calibration_credits + (delta_tokens_since × multiplier)`.
+
+**When to re-calibrate:**
+- After heavy off-peak usage (the delta uses standard multiplier)
+- When the bar seems off from the website
+- Periodically (e.g. weekly) for best accuracy
 
 **Limitations (inherent to the audit-log approach):**
 - **Per-machine only** — usage from other computers is not visible
@@ -327,7 +344,7 @@ MIT — see [LICENSE](LICENSE).
 - **自动识别** — 根据模型名前缀（`deepseek-` vs `mimo-`）自动切换厂商
 - **mod** — 当前使用的模型，自动从环境变量获取并简化显示（`deepseek-v4-pro[1m]` → `v4-pro`，`mimo-v2.5-pro` → `v2.5-pro`）
 - **bal** (DeepSeek) — 实时余额（人民币），通过 DeepSeek `/user/balance` API 查询
-- **额度进度条** (MiMo) — 彩虹 Unicode 进度条展示已用 Credits 占比，通过解析本地 audit_log 自动累计
+- **额度进度条** (MiMo) — 彩虹 Unicode 进度条展示**剩余** Credits（油表式：满→空），通过解析本地 audit_log 自动累计；支持 `/mimocorrection` 校准
 - **syn@** — 最后刷新时间（HH:MM 格式）
 - **ef** — Claude Code 努力级别（XHIGH / HIGH / MED / LOW）
 - **颜色编码** — 余额低于 ¥5 时变为黄色警告；进度条使用 12 色彩虹渐变
@@ -434,7 +451,7 @@ chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
 1. 找出所有 `"model"` 以 `mimo-` 开头的审计行
 2. 累加这些行的 `input_tokens` + `output_tokens`
 3. 乘以模型对应的 Credit 倍率（见下表）
-4. 渲染进度条：已用 Credits / 套餐总配额
+4. 渲染进度条：**剩余** Credits / 套餐总配额（油表式：满→空）
 
 为避免每次刷新（约 30s 间隔）都全量扫描，脚本使用 `~/.cache/deepseek-status/mimo-tokens.cache` 做文件时间戳缓存——当没有新的审计数据时直接返回缓存值。
 
@@ -442,6 +459,23 @@ chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
 - MiMo-V2-Omni: 1 Token = 1 Credit
 - MiMo-V2.5-Pro / V2-Pro: 1 Token = 2 Credits
 - 其他: 默认 2x（可通过 `MIMO_CREDIT_MULTIPLIER` 覆盖）
+
+**闲时优惠：** 北京时间 00:00-08:00，Credit 消耗按 0.8x 系数计算。
+
+### 3. 使用 `/mimocorrection` 校准
+
+审计日志方案只能追踪本机用量，与 MiMo 网站显示的真实余额可能有较大差距。使用 `/mimocorrection` 命令校准：
+
+```
+/mimocorrection 20,720,328 / 700,000,000
+```
+
+粘贴 MiMo Token Plan 网站上显示的"已用 / 总计"数字。命令会写入校准文件，将显示锚定到真实用量。校准后，脚本计算：`校准时已用 + (之后新增tokens × 倍率)`。
+
+**何时需要重新校准：**
+- 大量闲时使用后（delta 部分用标准倍率计算，会有少量误差）
+- 进度条与网站差距较大时
+- 建议定期校准（如每周一次）
 
 **局限（审计日志方案固有）：**
 - **仅限本机** — 其他电脑上的用量不可见

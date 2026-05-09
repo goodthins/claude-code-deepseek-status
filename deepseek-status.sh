@@ -131,6 +131,36 @@ compute_mimo_credits() {
   printf '%s' "$result"
 }
 
+# ---- calibrated MiMo credits (with calibration file support) -----------------
+# If a calibration file exists (~/.cache/deepseek-status/mimo-calibration.json),
+# compute credits as: cal_credits_used + (delta_tokens * multiplier).
+# Otherwise fall back to: total_tokens * multiplier (legacy behavior).
+compute_mimo_credits_calibrated() {
+  local cal_file="$HOME/.cache/deepseek-status/mimo-calibration.json"
+  local current_tokens
+  current_tokens=$(compute_mimo_credits)
+
+  if [[ -f "$cal_file" ]]; then
+    local cal_credits cal_tokens cal_mult
+    cal_credits=$(sed -n 's/.*"credits_used_at_calibration":\s*\([0-9]*\).*/\1/p' "$cal_file" | head -1)
+    cal_tokens=$(sed -n 's/.*"tokens_at_calibration":\s*\([0-9]*\).*/\1/p' "$cal_file" | head -1)
+    cal_mult=$(sed -n 's/.*"multiplier":\s*\([0-9]*\).*/\1/p' "$cal_file" | head -1)
+
+    if [[ -n "$cal_credits" ]] && [[ -n "$cal_tokens" ]] && [[ -n "$cal_mult" ]]; then
+      local delta=$(( current_tokens - cal_tokens ))
+      (( delta < 0 )) && delta=0
+      local credits_used=$(( cal_credits + delta * cal_mult ))
+      printf '%s' "$credits_used"
+      return
+    fi
+  fi
+
+  # Fallback: no calibration file — use legacy computation
+  local mult
+  mult=$(detect_credit_multiplier "$MODEL")
+  printf '%s' "$(( current_tokens * mult ))"
+}
+
 # ---- rainbow progress bar ---------------------------------------------------
 # $1 = number of filled chars (0-12)
 render_rainbow_bar() {
@@ -182,7 +212,7 @@ effort_icon() {
 EFFORT_DISPLAY=$(effort_icon "$EFFORT")
 
 # ---- time -------------------------------------------------------------------
-UPDATE_TIME=$(date '+%H:%M')
+UPDATE_TIME=$(TZ='Asia/Shanghai' date '+%H:%M')
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEEPSEEK PATH
@@ -228,19 +258,43 @@ else
 
   BAR=""
 
-  if [[ -n "$TOTAL_CREDITS" ]] && [[ "$TOTAL_CREDITS" -gt 0 ]] 2>/dev/null; then
-    TOKENS_USED=$(compute_mimo_credits)
-    MULT=$(detect_credit_multiplier "$MODEL")
-    CREDITS_USED=$(( TOKENS_USED * MULT ))
-
-    # filled = credits_used * width / total_credits  (avoids integer truncation)
-    FILLED=0
-    if [[ "$CREDITS_USED" -gt 0 ]] 2>/dev/null; then
-      FILLED=$(( CREDITS_USED * 12 / TOTAL_CREDITS ))
-      (( FILLED > 12 )) && FILLED=12
+  # Try reading total_credits from calibration file if env var is not set
+  if [[ -z "$TOTAL_CREDITS" ]] || [[ "$TOTAL_CREDITS" -le 0 ]] 2>/dev/null; then
+    local _cal_file="$HOME/.cache/deepseek-status/mimo-calibration.json"
+    if [[ -f "$_cal_file" ]]; then
+      TOTAL_CREDITS=$(sed -n 's/.*"total_credits":\s*\([0-9]*\).*/\1/p' "$_cal_file" | head -1)
     fi
+  fi
 
-    BAR=$(render_rainbow_bar "$FILLED")
+  if [[ -n "$TOTAL_CREDITS" ]] && [[ "$TOTAL_CREDITS" -gt 0 ]] 2>/dev/null; then
+    CREDITS_USED=$(compute_mimo_credits_calibrated)
+
+    # Reverse bar: full → empty as credits are consumed (fuel gauge style)
+    REMAINING=$(( TOTAL_CREDITS - CREDITS_USED ))
+    (( REMAINING < 0 )) && REMAINING=0
+    FILLED=$(( REMAINING * 12 / TOTAL_CREDITS ))
+    (( FILLED > 12 )) && FILLED=12
+
+    # Low credits warning: < 10% remaining
+    if (( REMAINING * 10 < TOTAL_CREDITS )); then
+      if [[ "$NO_COLOR" != "1" ]]; then
+        # Override rainbow with red warning bar
+        local bar=""
+        local i
+        for (( i=0; i<12; i++ )); do
+          if [[ $i -lt $FILLED ]]; then
+            bar+="\033[1;31m█"
+          else
+            bar+="\033[90m░"
+          fi
+        done
+        BAR="\033[90m[\033[0m${bar}\033[90m]\033[0m"
+      else
+        BAR=$(render_rainbow_bar "$FILLED")
+      fi
+    else
+      BAR=$(render_rainbow_bar "$FILLED")
+    fi
   else
     # No Token Plan config — show placeholder
     if [[ "$NO_COLOR" == "1" ]]; then

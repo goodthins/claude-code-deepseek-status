@@ -90,6 +90,18 @@ Set `MIMO_TOKEN_PLAN_TOTAL_CREDITS` to your plan's credit quota:
 
 MiMo has no public balance API. The script auto-tracks token consumption from Claude Code's local audit logs (`~/.claude/projects/*/*.jsonl`) and converts tokens to credits using the model-specific multiplier. A file-mtime cache avoids re-scanning on every refresh. Tracking is per-machine; usage from other computers is not reflected.
 
+### MiMo Credits Calibration
+
+The status line tracks per-machine usage from audit logs, which may differ from the MiMo website's total. Use `/mimocorrection` to calibrate:
+
+```
+/mimocorrection 20,720,328 / 700,000,000
+```
+
+This writes a calibration file (`~/.cache/deepseek-status/mimo-calibration.json`) that anchors the display to the real usage. The script then computes: `calibration_credits + (delta_tokens_since × multiplier)`.
+
+**Off-peak discount:** MiMo offers 0.8x credits during 00:00-08:00 Beijing time. The calibration captures the website's real balance (already discounted). Delta tracking uses the standard multiplier — re-calibrate periodically for best accuracy.
+
 ### Credit Multiplier
 
 | Model | Multiplier |
@@ -104,14 +116,15 @@ Override with `MIMO_CREDIT_MULTIPLIER` env var if needed.
 ### MiMo Display
 
 ```
-mod:v2.5-pro  [██████░░░░]  syn@14:32  ef:HIGH
-   ↑             ↑             ↑         ↑
-(cyan model) (rainbow bar)  (white time) (magenta effort)
+mod:v2.5-pro  [███████████░]  syn@14:32  ef:HIGH
+   ↑               ↑              ↑         ↑
+(cyan model)  (rainbow bar)   (white time) (magenta effort)
 ```
 
-- The progress bar replaces `bal:` — shows credits consumed vs. total plan quota
+- The progress bar replaces `bal:` — shows **remaining** credits (fuel gauge style: full → empty)
 - 12-character Unicode block bar with full rainbow gradient
 - Empty ░ chars in gray, filled █ chars cycle through 12 rainbow colors (Red → HotPink)
+- Bar turns **solid red** when remaining < 10% as a warning
 - `[?]` shown when `MIMO_TOKEN_PLAN_TOTAL_CREDITS` is not configured
 - Auto-detects provider by model name prefix (`mimo-` vs `deepseek-`)
 
