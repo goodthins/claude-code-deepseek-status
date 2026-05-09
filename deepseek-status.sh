@@ -212,7 +212,7 @@ effort_icon() {
 EFFORT_DISPLAY=$(effort_icon "$EFFORT")
 
 # ---- time -------------------------------------------------------------------
-UPDATE_TIME=$(TZ='Asia/Shanghai' date '+%H:%M')
+UPDATE_TIME=$(date '+%H:%M')
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEEPSEEK PATH
