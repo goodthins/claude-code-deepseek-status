@@ -26,10 +26,42 @@
 
 set -o pipefail
 
+# ---- statusLine input -------------------------------------------------------
+# Claude Code sends status-line context as JSON on stdin. Environment variables
+# remain supported for manual testing and older setups.
+STDIN_JSON=""
+if [[ ! -t 0 ]]; then
+  STDIN_JSON=$(cat 2>/dev/null || true)
+fi
+
+json_string_value() {
+  local key="${1:-}"
+  local json="${2:-}"
+  [[ -z "$key" ]] && return
+  printf '%s' "$json" | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
+}
+
+json_model_value() {
+  local json="${1:-}"
+  local v=""
+  v=$(json_string_value "id" "$json")
+  [[ -z "$v" ]] && v=$(json_string_value "display_name" "$json")
+  [[ -z "$v" ]] && v=$(json_string_value "name" "$json")
+  printf '%s' "$v"
+}
+
+json_effort_value() {
+  local json="${1:-}"
+  local v=""
+  v=$(json_string_value "level" "$json")
+  [[ -z "$v" ]] && v=$(json_string_value "effort" "$json")
+  printf '%s' "$v"
+}
+
 # ---- args -------------------------------------------------------------------
 API_KEY="${DEEPSEEK_API_KEY:-}"
-MODEL="${DEEPSEEK_MODEL:-${ANTHROPIC_MODEL:-}}"
-EFFORT="${CLAUDE_CODE_EFFORT_LEVEL:-${CLAUDE_EFFORT:-}}"
+MODEL="${DEEPSEEK_MODEL:-${ANTHROPIC_MODEL:-$(json_model_value "$STDIN_JSON")}}"
+EFFORT="${CLAUDE_CODE_EFFORT_LEVEL:-${CLAUDE_EFFORT:-$(json_effort_value "$STDIN_JSON")}}"
 NO_COLOR="${NO_COLOR:-}"
 TOTAL_CREDITS="${MIMO_TOKEN_PLAN_TOTAL_CREDITS:-}"
 CREDIT_MULTIPLIER="${MIMO_CREDIT_MULTIPLIER:-}"
@@ -107,7 +139,7 @@ compute_mimo_credits() {
     return
   fi
 
-  local cache_dir="$HOME/.cache/deepseek-status"
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/deepseek-status"
   local cache_file="$cache_dir/mimo-tokens.cache"
 
   # Use cache if no JSONL file is newer than the cache snapshot
@@ -121,13 +153,14 @@ compute_mimo_credits() {
   fi
 
   local total_tokens
-  total_tokens=$(grep -rh '"model":"mimo-' "$audit_base" 2>/dev/null | \
-    grep -oE '"input_tokens":[0-9]+|"output_tokens":[0-9]+' | \
+  total_tokens=$(grep -rhE '"model"[[:space:]]*:[[:space:]]*"mimo-' "$audit_base" 2>/dev/null | \
+    grep -oE '"input_tokens"[[:space:]]*:[[:space:]]*[0-9]+|"output_tokens"[[:space:]]*:[[:space:]]*[0-9]+' | \
     awk -F: '{s+=$2} END {printf "%.0f", s}')
 
   local result="${total_tokens:-0}"
-  mkdir -p "$cache_dir"
-  printf '%s\n' "$result" > "$cache_file"
+  if mkdir -p "$cache_dir" 2>/dev/null; then
+    printf '%s\n' "$result" > "$cache_file" 2>/dev/null || true
+  fi
   printf '%s' "$result"
 }
 
@@ -136,7 +169,7 @@ compute_mimo_credits() {
 # compute credits as: cal_credits_used + (delta_tokens * multiplier).
 # Otherwise fall back to: total_tokens * multiplier (legacy behavior).
 compute_mimo_credits_calibrated() {
-  local cal_file="$HOME/.cache/deepseek-status/mimo-calibration.json"
+  local cal_file="${XDG_CACHE_HOME:-$HOME/.cache}/deepseek-status/mimo-calibration.json"
   local current_tokens
   current_tokens=$(compute_mimo_credits)
 
@@ -260,7 +293,7 @@ else
 
   # Try reading total_credits from calibration file if env var is not set
   if [[ -z "$TOTAL_CREDITS" ]] || [[ "$TOTAL_CREDITS" -le 0 ]] 2>/dev/null; then
-    local _cal_file="$HOME/.cache/deepseek-status/mimo-calibration.json"
+    _cal_file="${XDG_CACHE_HOME:-$HOME/.cache}/deepseek-status/mimo-calibration.json"
     if [[ -f "$_cal_file" ]]; then
       TOTAL_CREDITS=$(sed -n 's/.*"total_credits":\s*\([0-9]*\).*/\1/p' "$_cal_file" | head -1)
     fi
@@ -279,8 +312,7 @@ else
     if (( REMAINING * 10 < TOTAL_CREDITS )); then
       if [[ "$NO_COLOR" != "1" ]]; then
         # Override rainbow with red warning bar
-        local bar=""
-        local i
+        bar=""
         for (( i=0; i<12; i++ )); do
           if [[ $i -lt $FILLED ]]; then
             bar+="\033[1;31m█"

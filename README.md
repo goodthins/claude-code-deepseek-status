@@ -2,6 +2,11 @@
 
 Real-time API status line plugin for [Claude Code](https://claude.ai/code). Auto-detects provider from model name. Displays model, balance/credits, sync time, and effort level — right in the status bar.
 
+This repository ships both:
+
+- a Claude Code plugin manifest with the `/mimocorrection` command
+- a standalone `deepseek-status.sh` status line script
+
 ### DeepSeek (pay-per-use)
 
 <!-- COLOR PREVIEW -->
@@ -100,6 +105,17 @@ Add to `~/.claude/settings.json` (merge into existing config):
 
 The status line appears at the bottom of the window automatically.
 
+**Windows:** use Git Bash explicitly if `bash` resolves to Windows' WSL launcher:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "\"C:\\Program Files\\Git\\bin\\bash.exe\" ~/.claude/skills/deepseek-status/deepseek-status.sh"
+  }
+}
+```
+
 ---
 
 ## MiMo Token Plan Setup
@@ -184,6 +200,16 @@ Paste the "used / total" numbers from the MiMo Token Plan website. The command w
 
 The status line appears with the rainbow credits progress bar.
 
+### Optional: install as a Claude Code plugin
+
+This repo includes `.claude-plugin/plugin.json` and `.claude/commands/mimocorrection.md`. Validate it with:
+
+```bash
+claude plugin validate .
+```
+
+Then install/use it through Claude Code's plugin workflow. Keep the status line command configured separately in `settings.json`; the plugin command provides `/mimocorrection`, while the status line itself is still a command hook.
+
 ---
 
 ## Manual Test
@@ -220,7 +246,7 @@ bash ~/.claude/skills/deepseek-status/deepseek-status.sh
 ## CLI Arguments
 
 ```bash
-./deepseek-status.sh [--api-key KEY] [--model NAME] [--effort LVL] [--no-color]
+./deepseek-status.sh [--api-key KEY] [--model NAME] [--effort LVL] [--total-credits N] [--no-color]
 ```
 
 Arguments override environment variables.
@@ -263,16 +289,18 @@ Arguments override environment variables.
 ## How It Works
 
 1. Claude Code invokes the script periodically via the `statusLine` command
-2. Script calls `GET https://api.deepseek.com/user/balance` (2s connect / 3s total timeout)
-3. Parses `total_balance` from the JSON response
-4. Outputs a single colorized line to stdout
+2. Script reads Claude Code's status-line JSON from stdin, with environment variables as fallback
+3. Script detects provider from model name prefix
+4. **DeepSeek**: calls `GET https://api.deepseek.com/user/balance` (2s connect / 3s total timeout) and parses `total_balance`
+5. **MiMo**: parses local audit logs, applies optional calibration, and renders remaining credits as a progress bar
+6. Outputs a single colorized line to stdout
 
 The balance API call is free and does not consume tokens.
 
 ## FAQ
 
 **Q: Does this work on Windows?**
-A: Yes — requires Git Bash (included with Git for Windows). The `bash` command must be in your PATH. Use the full path in the `statusLine.command` if needed, e.g. `"C:\\Program Files\\Git\\bin\\bash.exe"`.
+A: Yes — requires Git Bash (included with Git for Windows). Use the full path in `statusLine.command` if `bash` opens WSL instead, e.g. `"\"C:\\Program Files\\Git\\bin\\bash.exe\" ~/.claude/skills/deepseek-status/deepseek-status.sh"`.
 
 **Q: What if I use DeepSeek natively (not via the Anthropic-compatible endpoint)?**
 A: Set `DEEPSEEK_MODEL=deepseek-chat` (or your model name) in the `env` block.
@@ -301,6 +329,11 @@ MIT — see [LICENSE](LICENSE).
 # Claude Code AI 状态栏插件 (DeepSeek + MiMo)
 
 实时显示 API 账户信息：当前模型、余额/额度、同步时间、努力级别。根据模型名自动识别厂商。
+
+本仓库同时提供：
+
+- Claude Code 插件清单和 `/mimocorrection` 命令
+- 可独立配置到 `statusLine` 的 `deepseek-status.sh` 脚本
 
 ### DeepSeek (按量付费)
 
@@ -396,7 +429,7 @@ chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
 >
 > **DeepSeek 上的努力级别：** `max` 和 `xhigh` 是 Opus 专属级别，在非 Anthropic 模型上会被静默降级为 `high`。推荐使用 `high`——这是 DeepSeek 实际支持的最高推理质量。
 
-> **Windows 用户：** 如果状态栏不显示，请确认已安装 [Git for Windows](https://git-scm.com/)。如果 `bash` 不在 PATH 中，需要在 `statusLine.command` 中使用完整路径，如 `"C:\\Program Files\\Git\\bin\\bash.exe"`。
+> **Windows 用户：** 如果状态栏不显示，请确认已安装 [Git for Windows](https://git-scm.com/)。如果 `bash` 不在 PATH 中，或被解析为 Windows 自带的 WSL launcher，请在 `statusLine.command` 中使用完整 Git Bash 命令：`"\"C:\\Program Files\\Git\\bin\\bash.exe\" ~/.claude/skills/deepseek-status/deepseek-status.sh"`。
 
 ### 3. 重启 Claude Code
 
@@ -485,6 +518,18 @@ chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
 ### 3. 重启 Claude Code
 
 状态栏将显示彩虹额度进度条。
+
+---
+
+### 可选：作为 Claude Code 插件校验
+
+本仓库包含 `.claude-plugin/plugin.json` 和 `.claude/commands/mimocorrection.md`，可用下面命令校验：
+
+```bash
+claude plugin validate .
+```
+
+插件命令提供 `/mimocorrection`；状态栏脚本仍需要在 `settings.json` 的 `statusLine.command` 中配置。
 
 ---
 

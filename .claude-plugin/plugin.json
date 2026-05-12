@@ -1,0 +1,17 @@
+{
+  "name": "deepseek-status",
+  "version": "0.3.0",
+  "description": "Claude Code status line helper for DeepSeek balance and MiMo Token Plan credits.",
+  "author": {
+    "name": "goodthins"
+  },
+  "repository": "https://github.com/goodthins/claude-code-deepseek-status",
+  "license": "MIT",
+  "keywords": [
+    "statusline",
+    "deepseek",
+    "mimo",
+    "credits"
+  ],
+  "commands": "./.claude/commands/"
+}

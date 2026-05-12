@@ -7,6 +7,8 @@ description: Real-time API balance/credits, model, and status display for Claude
 
 Displays real-time API account info in Claude Code's status bar: current model, balance/credits, update time, and effort level — all color-coded. Auto-detects provider from model name.
 
+This package includes a Claude Code plugin manifest for the `/mimocorrection` command plus the standalone `deepseek-status.sh` script used by `statusLine.command`.
+
 ## Supported Providers
 
 | Provider | Billing Model | Display |
@@ -20,6 +22,17 @@ Displays real-time API account info in Claude Code's status bar: current model, 
 mkdir -p ~/.claude/skills/deepseek-status
 cp deepseek-status.sh ~/.claude/skills/deepseek-status/
 chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
+```
+
+On Windows, prefer the full Git Bash path in `statusLine.command` if `bash` resolves to the Windows WSL launcher:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "\"C:\\Program Files\\Git\\bin\\bash.exe\" ~/.claude/skills/deepseek-status/deepseek-status.sh"
+  }
+}
 ```
 
 ---
@@ -150,10 +163,19 @@ mod:v2.5-pro  [███████████░]  syn@14:32  ef:HIGH
 
 Arguments override environment variables.
 
+## Plugin Validation
+
+This repository contains `.claude-plugin/plugin.json` and `.claude/commands/mimocorrection.md`.
+
+```bash
+claude plugin validate .
+```
+
 ## How It Works
 
 1. Claude Code invokes the script periodically via the `statusLine` command
-2. Script detects provider from model name prefix
-3. **DeepSeek**: Calls `GET https://api.deepseek.com/user/balance` (2s/3s timeout) and parses `total_balance`
-4. **MiMo**: Parses `~/.claude/projects/*/*.jsonl` audit logs (no public API exists), sums `input_tokens + output_tokens` for MiMo model calls, multiplies by credit rate, renders progress bar vs. total quota. Uses file-mtime cache for performance.
-5. Outputs a single colorized line to stdout
+2. Script reads Claude Code's status-line JSON from stdin, with environment variables as fallback
+3. Script detects provider from model name prefix
+4. **DeepSeek**: Calls `GET https://api.deepseek.com/user/balance` (2s/3s timeout) and parses `total_balance`
+5. **MiMo**: Parses `~/.claude/projects/*/*.jsonl` audit logs (no public API exists), sums `input_tokens + output_tokens` for MiMo model calls, multiplies by credit rate, renders progress bar vs. total quota. Uses file-mtime cache for performance.
+6. Outputs a single colorized line to stdout
