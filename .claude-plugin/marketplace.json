@@ -1,0 +1,27 @@
+{
+  "name": "goodthins-claude-plugins",
+  "owner": {
+    "name": "goodthins"
+  },
+  "description": "Claude Code plugins and status-line helpers by goodthins.",
+  "plugins": [
+    {
+      "name": "deepseek-status",
+      "source": "./",
+      "description": "Status line helper for DeepSeek balance and MiMo Token Plan credits.",
+      "version": "0.4.0",
+      "author": {
+        "name": "goodthins"
+      },
+      "repository": "https://github.com/goodthins/claude-code-deepseek-status",
+      "license": "MIT",
+      "category": "Productivity",
+      "tags": [
+        "statusline",
+        "deepseek",
+        "mimo",
+        "credits"
+      ]
+    }
+  ]
+}

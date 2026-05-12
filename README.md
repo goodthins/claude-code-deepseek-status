@@ -60,6 +60,51 @@ This repository ships both:
 
 > **Prerequisite:** Claude Code must already be configured to use DeepSeek's Anthropic-compatible endpoint. If you haven't done this yet, see [DeepSeek's Claude Code guide](https://platform.deepseek.com/docs).
 
+## Fresh Machine Setup
+
+Use this path when you are setting up a new computer after Claude Code is already installed.
+
+### 1. Install the plugin command
+
+The plugin install gives you the `/mimocorrection` slash command.
+
+```bash
+claude plugin marketplace add goodthins/claude-code-deepseek-status
+claude plugin install deepseek-status@goodthins-claude-plugins
+```
+
+If you cloned this repository locally instead, install from the local path:
+
+```bash
+claude plugin marketplace add /path/to/claude-code-deepseek-status
+claude plugin install deepseek-status@goodthins-claude-plugins
+```
+
+### 2. Install the status line script
+
+The status line itself is still configured as a Claude Code command hook.
+
+```bash
+mkdir -p ~/.claude/skills/deepseek-status
+curl -L -o ~/.claude/skills/deepseek-status/deepseek-status.sh \
+  https://raw.githubusercontent.com/goodthins/claude-code-deepseek-status/main/deepseek-status.sh
+chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
+```
+
+### 3. Choose a provider config
+
+Use either the DeepSeek config or the MiMo config below in `~/.claude/settings.json`, then restart Claude Code.
+
+### 4. Optional MiMo calibration
+
+After MiMo is configured and Claude Code has restarted, run:
+
+```text
+/mimocorrection 20,720,328 / 700,000,000
+```
+
+Replace the numbers with the "used / total" values shown on the MiMo Token Plan website.
+
 ### 1. Install the script
 
 ```bash
@@ -387,6 +432,51 @@ MIT — see [LICENSE](LICENSE).
 ## 快速开始
 
 > **前提：** Claude Code 必须已配置为使用 DeepSeek 的 Anthropic 兼容接口。如果还没有，请参考 [DeepSeek 官方指南](https://platform.deepseek.com/docs)。
+
+## 新电脑完整配置
+
+当你在一台新电脑上已经装好 Claude Code 后，按这组步骤配置。
+
+### 1. 安装插件命令
+
+插件安装提供 `/mimocorrection` 斜杠命令。
+
+```bash
+claude plugin marketplace add goodthins/claude-code-deepseek-status
+claude plugin install deepseek-status@goodthins-claude-plugins
+```
+
+如果你已经把本仓库 clone 到本地，也可以从本地路径安装：
+
+```bash
+claude plugin marketplace add /path/to/claude-code-deepseek-status
+claude plugin install deepseek-status@goodthins-claude-plugins
+```
+
+### 2. 安装状态栏脚本
+
+状态栏本身仍然需要作为 Claude Code 的 `statusLine` command hook 配置。
+
+```bash
+mkdir -p ~/.claude/skills/deepseek-status
+curl -L -o ~/.claude/skills/deepseek-status/deepseek-status.sh \
+  https://raw.githubusercontent.com/goodthins/claude-code-deepseek-status/main/deepseek-status.sh
+chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
+```
+
+### 3. 选择服务商配置
+
+在 `~/.claude/settings.json` 中使用下方 DeepSeek 或 MiMo 任意一套配置，然后重启 Claude Code。
+
+### 4. 可选：MiMo 校准
+
+MiMo 配置完成并重启 Claude Code 后，运行：
+
+```text
+/mimocorrection 20,720,328 / 700,000,000
+```
+
+把数字替换成 MiMo Token Plan 网站显示的“已用 / 总计”。
 
 ### 1. 安装脚本
 
