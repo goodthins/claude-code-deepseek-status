@@ -8,8 +8,8 @@
     {
       "name": "deepseek-status",
       "source": "./",
-      "description": "Status line helper for DeepSeek balance and MiMo Token Plan credits.",
-      "version": "0.4.0",
+      "description": "Status line helper for DeepSeek account balance.",
+      "version": "1.0.0",
       "author": {
         "name": "goodthins"
       },
@@ -19,8 +19,7 @@
       "tags": [
         "statusline",
         "deepseek",
-        "mimo",
-        "credits"
+        "balance"
       ]
     }
   ]

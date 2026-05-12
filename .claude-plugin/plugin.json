@@ -1,7 +1,7 @@
 {
   "name": "deepseek-status",
-  "version": "0.4.0",
-  "description": "Claude Code status line helper for DeepSeek balance and MiMo Token Plan credits.",
+  "version": "1.0.0",
+  "description": "Claude Code status line helper for DeepSeek account balance.",
   "author": {
     "name": "goodthins"
   },
@@ -10,8 +10,6 @@
   "keywords": [
     "statusline",
     "deepseek",
-    "mimo",
-    "credits"
-  ],
-  "commands": "./.claude/commands/"
+    "balance"
+  ]
 }

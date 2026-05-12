@@ -1,43 +1,29 @@
 ---
 name: deepseek-status
-description: Real-time API balance/credits, model, and status display for Claude Code status line — supports DeepSeek (pay-per-use) and MiMo (Token Plan)
+description: Real-time DeepSeek balance, model, and status display for Claude Code status line
 ---
 
-# AI Status Line Plugin (DeepSeek + MiMo)
+# DeepSeek Status Line Plugin
 
-Displays real-time API account info in Claude Code's status bar: current model, balance/credits, update time, and effort level — all color-coded. Auto-detects provider from model name.
+Displays DeepSeek account info in Claude Code's status bar: current model, balance, update time, and effort level.
 
-This package includes a Claude Code plugin manifest for the `/mimocorrection` command plus the standalone `deepseek-status.sh` script used by `statusLine.command`.
-
-## Supported Providers
+## Supported Provider
 
 | Provider | Billing Model | Display |
-|----------|--------------|---------|
+|----------|---------------|---------|
 | **DeepSeek** | Pay-per-use (¥) | `mod:v4-pro  bal:¥17.38  syn@14:32  ef:HIGH` |
-| **MiMo** | Token Plan (credits) | `mod:v2.5-pro  [██████░░░░]  syn@14:32  ef:HIGH` |
 
-## Quick Install
+## Fresh Machine Setup
 
 ```bash
+claude plugin marketplace add goodthins/claude-code-deepseek-status
+claude plugin install deepseek-status@goodthins-claude-plugins
+
 mkdir -p ~/.claude/skills/deepseek-status
-cp deepseek-status.sh ~/.claude/skills/deepseek-status/
+curl -L -o ~/.claude/skills/deepseek-status/deepseek-status.sh \
+  https://raw.githubusercontent.com/goodthins/claude-code-deepseek-status/main/deepseek-status.sh
 chmod +x ~/.claude/skills/deepseek-status/deepseek-status.sh
 ```
-
-On Windows, prefer the full Git Bash path in `statusLine.command` if `bash` resolves to the Windows WSL launcher:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "\"C:\\Program Files\\Git\\bin\\bash.exe\" ~/.claude/skills/deepseek-status/deepseek-status.sh"
-  }
-}
-```
-
----
-
-## DeepSeek Configuration
 
 Add to `~/.claude/settings.json`:
 
@@ -57,125 +43,28 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
-### DeepSeek Display
-
-```
-mod:v4-pro  bal:¥17.38  syn@14:32  ef:MAX
-  ↑    ↑       ↑    ↑       ↑    ↑      ↑   ↑
-label value  label value  label value  label value
-(gray)(cyan) (gray)(green) (gray)(white) (gray)(magenta)
-```
-
-- `mod` = model · `bal` = balance · `syn@` = last sync · `ef` = effort factor
-- Balance < ¥5 → value turns yellow as a warning
-- API unavailable → value shows `?`
-
----
-
-## MiMo Token Plan Configuration
-
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://token-plan-cn.xiaomimimo.com/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "tp-your-mimo-key",
-    "ANTHROPIC_MODEL": "mimo-v2.5-pro",
-    "MIMO_TOKEN_PLAN_TOTAL_CREDITS": "700000000",
-    "CLAUDE_CODE_EFFORT_LEVEL": "high"
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/skills/deepseek-status/deepseek-status.sh"
-  }
-}
-```
-
-Set `MIMO_TOKEN_PLAN_TOTAL_CREDITS` to your plan's credit quota:
-
-| Plan | Credits | Config Value |
-|------|---------|-------------|
-| Lite | 60M | `60000000` |
-| Standard | 200M | `200000000` |
-| Pro | 700M | `700000000` |
-| Max | 1.6B | `1600000000` |
-
-MiMo has no public balance API. The script auto-tracks token consumption from Claude Code's local audit logs (`~/.claude/projects/*/*.jsonl`) and converts tokens to credits using the model-specific multiplier. A file-mtime cache avoids re-scanning on every refresh. Tracking is per-machine; usage from other computers is not reflected.
-
-### MiMo Credits Calibration
-
-The status line tracks per-machine usage from audit logs, which may differ from the MiMo website's total. Use `/mimocorrection` to calibrate:
-
-```
-/mimocorrection 20,720,328 / 700,000,000
-```
-
-This writes a calibration file (`~/.cache/deepseek-status/mimo-calibration.json`) that anchors the display to the real usage. The script then computes: `calibration_credits + (delta_tokens_since × multiplier)`.
-
-**Off-peak discount:** MiMo offers 0.8x credits during 00:00-08:00 Beijing time. The calibration captures the website's real balance (already discounted). Delta tracking uses the standard multiplier — re-calibrate periodically for best accuracy.
-
-### Credit Multiplier
-
-| Model | Multiplier |
-|-------|-----------|
-| MiMo-V2-Omni | 1x (1 Token = 1 Credit) |
-| MiMo-V2.5-Pro | 2x (1 Token = 2 Credits) |
-| MiMo-V2-Pro | 2x (1 Token = 2 Credits) |
-| Others | 2x (default) |
-
-Override with `MIMO_CREDIT_MULTIPLIER` env var if needed.
-
-### MiMo Display
-
-```
-mod:v2.5-pro  [███████████░]  syn@14:32  ef:HIGH
-   ↑               ↑              ↑         ↑
-(cyan model)  (rainbow bar)   (white time) (magenta effort)
-```
-
-- The progress bar replaces `bal:` — shows **remaining** credits (fuel gauge style: full → empty)
-- 12-character Unicode block bar with full rainbow gradient
-- Empty ░ chars in gray, filled █ chars cycle through 12 rainbow colors (Red → HotPink)
-- Bar turns **solid red** when remaining < 10% as a warning
-- `[?]` shown when `MIMO_TOKEN_PLAN_TOTAL_CREDITS` is not configured
-- Auto-detects provider by model name prefix (`mimo-` vs `deepseek-`)
-
----
+Restart Claude Code after editing settings.
 
 ## Environment Variables
 
-| Variable | Provider | Purpose | Default |
-|----------|----------|---------|---------|
-| `DEEPSEEK_API_KEY` | DeepSeek | API key for balance queries | — |
-| `MIMO_TOKEN_PLAN_TOTAL_CREDITS` | MiMo | Token Plan total credit quota | — |
-| `MIMO_CREDIT_MULTIPLIER` | MiMo | Token→Credit multiplier override | auto-detect |
-| `DEEPSEEK_MODEL` | Both | Model name override | `$ANTHROPIC_MODEL` |
-| `CLAUDE_CODE_EFFORT_LEVEL` | Both | Effort level (Claude Code official) | — |
-| `CLAUDE_EFFORT` | Both | Legacy fallback | — |
-| `NO_COLOR` | Both | Set to 1 to disable colors | — |
+| Variable | Purpose |
+|----------|---------|
+| `DEEPSEEK_API_KEY` | API key for DeepSeek balance queries |
+| `DEEPSEEK_MODEL` | Optional model name override |
+| `ANTHROPIC_MODEL` | Model name from Claude Code settings |
+| `CLAUDE_CODE_EFFORT_LEVEL` | Effort level |
+| `CLAUDE_EFFORT` | Legacy effort fallback |
+| `NO_COLOR` | Set to `1` to disable colors |
 
 ## CLI Arguments
 
 ```bash
-./deepseek-status.sh [--api-key KEY] [--model NAME] [--effort LVL] [--total-credits N] [--no-color]
-```
-
-Arguments override environment variables.
-
-## Plugin Validation
-
-This repository contains `.claude-plugin/plugin.json` and `.claude/commands/mimocorrection.md`.
-
-```bash
-claude plugin validate .
+./deepseek-status.sh [--api-key KEY] [--model NAME] [--effort LVL] [--no-color]
 ```
 
 ## How It Works
 
-1. Claude Code invokes the script periodically via the `statusLine` command
-2. Script reads Claude Code's status-line JSON from stdin, with environment variables as fallback
-3. Script detects provider from model name prefix
-4. **DeepSeek**: Calls `GET https://api.deepseek.com/user/balance` (2s/3s timeout) and parses `total_balance`
-5. **MiMo**: Parses `~/.claude/projects/*/*.jsonl` audit logs (no public API exists), sums `input_tokens + output_tokens` for MiMo model calls, multiplies by credit rate, renders progress bar vs. total quota. Uses file-mtime cache for performance.
-6. Outputs a single colorized line to stdout
+1. Claude Code invokes the script via `statusLine.command`
+2. The script reads status-line JSON from stdin, with environment variables as fallback
+3. It calls `GET https://api.deepseek.com/user/balance`
+4. It prints one colorized status line
